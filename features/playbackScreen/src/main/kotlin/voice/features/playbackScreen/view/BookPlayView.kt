@@ -32,6 +32,7 @@ internal fun BookPlayView(
   onVolumeBoostClick: () -> Unit,
   onSubtitleFileSelect: (Uri) -> Unit,
   onRemoveSubtitlesClick: () -> Unit,
+  onSubtitlesGenerationResult: (srtUri: Uri?, cues: Int, matchRate: Double, error: String?) -> Unit,
   onSkipToNext: () -> Unit,
   onSkipToPrevious: () -> Unit,
   onCloseClick: () -> Unit,
@@ -53,6 +54,7 @@ internal fun BookPlayView(
         onVolumeBoostClick = onVolumeBoostClick,
         onSubtitleFileSelect = onSubtitleFileSelect,
         onRemoveSubtitlesClick = onRemoveSubtitlesClick,
+        onSubtitlesGenerationResult = onSubtitlesGenerationResult,
         onCloseClick = onCloseClick,
         useLandscapeLayout = useLandscapeLayout,
       )
@@ -97,6 +99,7 @@ private fun BookPlayPreview(
       onVolumeBoostClick = {},
       onSubtitleFileSelect = {},
       onRemoveSubtitlesClick = {},
+      onSubtitlesGenerationResult = { _, _, _, _ -> },
       onSkipToNext = {},
       onSkipToPrevious = {},
       onCloseClick = {},
@@ -119,6 +122,7 @@ private class BookPlayViewStatePreviewProvider : PreviewParameterProvider<BookPl
       sleepTimerState = BookPlayViewState.SleepTimerViewState.Disabled,
       title = "Das Ende der Welt",
       subtitle = BookPlayViewState.SubtitleViewState.Disabled,
+      subtitleGeneration = BookPlayViewState.SubtitleGenerationViewState.Unavailable,
     )
     yield(initial)
     yield(

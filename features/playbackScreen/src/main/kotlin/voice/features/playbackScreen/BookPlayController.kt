@@ -9,6 +9,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.retain.retain
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.navigation3.runtime.NavEntry
 import dev.zacsweers.metro.AppScope
@@ -17,6 +18,7 @@ import dev.zacsweers.metro.IntoSet
 import dev.zacsweers.metro.Provides
 import voice.core.common.rootGraphAs
 import voice.core.data.BookId
+import voice.features.playbackScreen.subtitles.SubReadContract
 import voice.features.playbackScreen.view.BookPlayView
 import voice.features.sleepTimer.SleepTimerDialog
 import voice.navigation.Destination
@@ -37,6 +39,8 @@ fun BookPlayScreen(bookId: BookId) {
   val bookmarkAddedMessage = stringResource(StringsR.string.bookmark_added_snackbar)
   val batteryOptimizationMessage = stringResource(StringsR.string.playback_battery_optimization_rationale)
   val batteryOptimizationAction = stringResource(StringsR.string.playback_battery_optimization_action)
+  val lowMatchRateWarning = stringResource(StringsR.string.playback_subread_result_low_match_warning)
+  val context = LocalContext.current
   LaunchedEffect(viewModel) {
     viewModel.viewEffects.collect { viewEffect ->
       when (viewEffect) {
@@ -53,6 +57,24 @@ fun BookPlayScreen(bookId: BookId) {
             viewModel.onBatteryOptimizationRequested()
           }
         }
+        is BookPlayViewEffect.SubtitleGenerationSucceeded -> {
+          val cuesMessage = context.resources.getQuantityString(
+            StringsR.plurals.playback_subread_result_cues,
+            viewEffect.cues,
+            viewEffect.cues,
+          )
+          val message = if (viewEffect.matchRate < SubReadContract.LOW_MATCH_RATE_THRESHOLD) {
+            "$cuesMessage $lowMatchRateWarning"
+          } else {
+            cuesMessage
+          }
+          snackbarHostState.showSnackbar(message = message)
+        }
+        is BookPlayViewEffect.SubtitleGenerationFailed -> {
+          snackbarHostState.showSnackbar(
+            message = context.getString(StringsR.string.playback_subread_error, viewEffect.message),
+          )
+        }
       }
     }
   }
@@ -68,6 +90,7 @@ fun BookPlayScreen(bookId: BookId) {
     onSkipSilenceClick = viewModel::toggleSkipSilence,
     onSubtitleFileSelect = viewModel::onSubtitleFileSelected,
     onRemoveSubtitlesClick = viewModel::onRemoveSubtitlesClick,
+    onSubtitlesGenerationResult = viewModel::onSubtitlesGenerated,
     onSleepTimerClick = viewModel::toggleSleepTimer,
     onVolumeBoostClick = viewModel::onVolumeGainIconClick,
     onSpeedChangeClick = viewModel::onPlaybackSpeedIconClick,

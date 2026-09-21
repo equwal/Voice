@@ -39,6 +39,7 @@ import voice.core.sleeptimer.SleepTimerMode.TimedWithDuration
 import voice.core.sleeptimer.SleepTimerState
 import voice.core.subtitles.SubtitleCue
 import voice.core.subtitles.SubtitleCueIndex
+import voice.features.playbackScreen.subtitles.SubtitleFileStore
 import voice.features.playbackScreen.subtitles.SubtitleLoader
 import voice.features.sleepTimer.SleepTimerViewState
 import java.time.Instant
@@ -87,6 +88,7 @@ class BookPlayViewModelTest {
   private val subtitleLoader = mockk<SubtitleLoader> {
     coEvery { load(any()) } returns null
   }
+  private val subtitleFileStore = mockk<SubtitleFileStore>()
   private val viewModel = BookPlayViewModel(
     bookRepository = mockk {
       coEvery { get(book.id) } returns book
@@ -115,6 +117,7 @@ class BookPlayViewModelTest {
     batteryOptimization = mockk(),
     subtitleRepo = subtitleRepo,
     subtitleLoader = subtitleLoader,
+    subtitleFileStore = subtitleFileStore,
     sleepTimerPreferenceStore = sleepTimerDataStore,
     bookId = book.id,
     dispatcherProvider = DispatcherProvider(scope.coroutineContext, scope.coroutineContext, scope.coroutineContext),
@@ -386,6 +389,87 @@ class BookPlayViewModelTest {
     assertEquals(expected = null, actual = repo.uriFlow(book.id).first())
   }
 
+  @Test
+  fun `subtitle generation is available when the book has exactly one audio file`() = scope.runTest {
+    val singleFileBook = book(chapterCount = 1)
+    val viewModel = viewModel(book = singleFileBook)
+
+    backgroundScope.launchMolecule(RecompositionMode.Immediate) {
+      viewModel.viewState()
+    }.test {
+      assertEquals(expected = null, actual = awaitItem())
+      val state = awaitItem()!!
+      assertEquals(
+        expected = BookPlayViewState.SubtitleGenerationViewState.Available(
+          chapterId = singleFileBook.chapters.single().id,
+        ),
+        actual = state.subtitleGeneration,
+      )
+    }
+  }
+
+  @Test
+  fun `subtitle generation is unavailable when the book has more than one audio file`() = scope.runTest {
+    val multiFileBook = book(chapterCount = 2)
+    val viewModel = viewModel(book = multiFileBook)
+
+    backgroundScope.launchMolecule(RecompositionMode.Immediate) {
+      viewModel.viewState()
+    }.test {
+      assertEquals(expected = null, actual = awaitItem())
+      val state = awaitItem()!!
+      assertEquals(expected = BookPlayViewState.SubtitleGenerationViewState.Unavailable, actual = state.subtitleGeneration)
+    }
+  }
+
+  @Test
+  fun `generating subtitles copies the file into app storage and stores it through the subtitle repo`() = scope.runTest {
+    val srtUri = mockk<Uri>()
+    val localUri = mockk<Uri>()
+    val repo = FakeSubtitleRepo()
+    coEvery { subtitleFileStore.copyToAppStorage(book.id, srtUri) } returns localUri
+    val viewModel = viewModel(subtitleRepo = repo)
+
+    viewModel.viewEffects.test {
+      viewModel.onSubtitlesGenerated(srtUri = srtUri, cues = 42, matchRate = 0.95, error = null)
+      assertEquals(
+        expected = BookPlayViewEffect.SubtitleGenerationSucceeded(cues = 42, matchRate = 0.95),
+        actual = awaitItem(),
+      )
+      cancelAndIgnoreRemainingEvents()
+    }
+    assertEquals(expected = localUri, actual = repo.uriFlow(book.id).first())
+  }
+
+  @Test
+  fun `subtitle generation failure reports the error without touching the repo`() = scope.runTest {
+    val repo = FakeSubtitleRepo()
+    val viewModel = viewModel(subtitleRepo = repo)
+
+    viewModel.viewEffects.test {
+      viewModel.onSubtitlesGenerated(srtUri = null, cues = 0, matchRate = 0.0, error = "no audio matched")
+      assertEquals(
+        expected = BookPlayViewEffect.SubtitleGenerationFailed("no audio matched"),
+        actual = awaitItem(),
+      )
+      cancelAndIgnoreRemainingEvents()
+    }
+    assertEquals(expected = null, actual = repo.uriFlow(book.id).first())
+  }
+
+  @Test
+  fun `cancelling subtitle generation reports nothing`() = scope.runTest {
+    // subtitleFileStore is a strict mock: if this path called copyToAppStorage, the test would
+    // fail with an unstubbed-call exception, since only the success test stubs it.
+    val repo = FakeSubtitleRepo()
+    val viewModel = viewModel(subtitleRepo = repo)
+
+    viewModel.onSubtitlesGenerated(srtUri = null, cues = 0, matchRate = 0.0, error = null)
+    yield()
+
+    assertEquals(expected = null, actual = repo.uriFlow(book.id).first())
+  }
+
   private fun viewModel(
     book: Book = this.book,
     experimentalPlaybackPersistence: Boolean = false,
@@ -394,6 +478,7 @@ class BookPlayViewModelTest {
     playStateFlow: MutableStateFlow<PlayStateManager.PlayState> = MutableStateFlow(PlayStateManager.PlayState.Paused),
     subtitleRepo: FakeSubtitleRepo = this.subtitleRepo,
     subtitleLoader: SubtitleLoader = this.subtitleLoader,
+    subtitleFileStore: SubtitleFileStore = this.subtitleFileStore,
   ): BookPlayViewModel {
     return BookPlayViewModel(
       bookRepository = mockk {
@@ -417,6 +502,7 @@ class BookPlayViewModelTest {
       batteryOptimization = mockk(),
       subtitleRepo = subtitleRepo,
       subtitleLoader = subtitleLoader,
+      subtitleFileStore = subtitleFileStore,
       sleepTimerPreferenceStore = sleepTimerDataStore,
       bookId = book.id,
       dispatcherProvider = DispatcherProvider(scope.coroutineContext, scope.coroutineContext, scope.coroutineContext),
@@ -430,11 +516,9 @@ private fun book(
   name: String = "TestBook",
   lastPlayedAtMillis: Long = 0L,
   addedAtMillis: Long = 0L,
+  chapterCount: Int = 2,
 ): Book {
-  val chapters = listOf(
-    chapter(),
-    chapter(),
-  )
+  val chapters = List(chapterCount) { chapter() }
   return Book(
     content = BookContent(
       author = Uuid.random().toString(),
@@ -444,7 +528,7 @@ private fun book(
       addedAt = Instant.ofEpochMilli(addedAtMillis),
       chapters = chapters.map { it.id },
       cover = null,
-      currentChapter = chapters[1].id,
+      currentChapter = chapters.last().id,
       isActive = true,
       lastPlayedAt = Instant.ofEpochMilli(lastPlayedAtMillis),
       skipSilence = false,

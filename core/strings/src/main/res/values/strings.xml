@@ -177,6 +177,8 @@
     <string name="playback.chapter.previous">Previous track</string>
     <!-- Menu label for toggling silence skipping during playback. -->
     <string name="playback.option.skip_silence">Skip Silence</string>
+    <!-- Menu label to create an SRT subtitle file for this book with the SubRead app. -->
+    <string name="playback.option.subread">Make subtitles with SubRead…</string>
     <!-- Menu label to load or replace the SRT subtitle file for this book. -->
     <string name="playback.option.subtitles">Subtitles…</string>
     <!-- Menu label to remove the loaded subtitle file from this book. -->
@@ -185,6 +187,21 @@
     <string name="playback.option.volume_boost">Volume boost</string>
     <!-- Title and content description for playback-speed controls. -->
     <string name="playback.speed.title">Playback speed</string>
+    <!-- Snackbar message shown when SubRead reports an error while creating subtitles. %1$s is the error text from SubRead. -->
+    <string name="playback.subread.error">Could not create subtitles: %1$s</string>
+    <!-- Button in the SubRead-not-installed dialog. It opens the SubRead download page. -->
+    <string name="playback.subread.not_installed.action">Get SubRead</string>
+    <!-- Message in the dialog shown when the SubRead app is not installed. -->
+    <string name="playback.subread.not_installed.message">SubRead is a separate app. It listens to this audiobook and reads its ebook to create subtitles for it.</string>
+    <!-- Title for the dialog shown when the SubRead app is not installed. -->
+    <string name="playback.subread.not_installed.title">SubRead is not installed</string>
+    <!-- Pluralized count of subtitle lines that SubRead created, shown in a snackbar. -->
+    <plurals name="playback.subread.result.cues">
+        <item quantity="one">%d subtitle line created</item>
+        <item quantity="other">%d subtitle lines created</item>
+    </plurals>
+    <!-- Appended to the SubRead result snackbar when the match rate is low. Warns that the ebook may not match the audio. -->
+    <string name="playback.subread.result.low_match_warning">The ebook may be a different edition or translation.</string>
     <!-- Negative button for cancelling feedback. -->
     <string name="review.feedback.action.cancel" tools:ignore="UnusedResources">Cancel</string>
     <!-- Positive button for sending feedback. -->

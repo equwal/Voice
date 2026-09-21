@@ -32,6 +32,7 @@ internal fun BookPlayAppBar(
   onVolumeBoostClick: () -> Unit,
   onSubtitleFileSelect: (Uri) -> Unit,
   onRemoveSubtitlesClick: () -> Unit,
+  onSubtitlesGenerationResult: (srtUri: Uri?, cues: Int, matchRate: Double, error: String?) -> Unit,
   onCloseClick: () -> Unit,
   useLandscapeLayout: Boolean,
 ) {
@@ -72,10 +73,12 @@ internal fun BookPlayAppBar(
     OverflowMenu(
       skipSilence = viewState.skipSilence,
       subtitlesEnabled = viewState.subtitle is BookPlayViewState.SubtitleViewState.Enabled,
+      subtitleGeneration = viewState.subtitleGeneration,
       onSkipSilenceClick = onSkipSilenceClick,
       onVolumeBoostClick = onVolumeBoostClick,
       onSubtitleFileSelect = onSubtitleFileSelect,
       onRemoveSubtitlesClick = onRemoveSubtitlesClick,
+      onSubtitlesGenerationResult = onSubtitlesGenerationResult,
     )
   }
   if (useLandscapeLayout) {

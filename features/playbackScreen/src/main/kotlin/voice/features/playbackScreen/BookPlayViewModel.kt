@@ -46,6 +46,7 @@ import voice.core.sleeptimer.SleepTimerMode.TimedWithDuration
 import voice.core.sleeptimer.SleepTimerState
 import voice.core.ui.formatTime
 import voice.features.playbackScreen.batteryOptimization.BatteryOptimization
+import voice.features.playbackScreen.subtitles.SubtitleFileStore
 import voice.features.playbackScreen.subtitles.SubtitleLoader
 import voice.features.sleepTimer.SleepTimerViewState
 import voice.navigation.Destination
@@ -70,6 +71,7 @@ class BookPlayViewModel(
   private val batteryOptimization: BatteryOptimization,
   private val subtitleRepo: SubtitleRepo,
   private val subtitleLoader: SubtitleLoader,
+  private val subtitleFileStore: SubtitleFileStore,
   dispatcherProvider: DispatcherProvider,
   @SleepTimerPreferenceStore
   private val sleepTimerPreferenceStore: DataStore<SleepTimerPreference>,
@@ -144,6 +146,9 @@ class BookPlayViewModel(
     } else {
       BookPlayViewState.SubtitleViewState.Enabled(text = subtitleCueIndex?.cueAt(book.position)?.text)
     }
+    val subtitleGeneration = book.chapters.singleOrNull()?.let {
+      BookPlayViewState.SubtitleGenerationViewState.Available(chapterId = it.id)
+    } ?: BookPlayViewState.SubtitleGenerationViewState.Unavailable
 
     return BookPlayViewState(
       sleepTimerState = sleepTime.toViewState(),
@@ -156,6 +161,7 @@ class BookPlayViewModel(
       cover = book.content.coverUrl,
       skipSilence = book.content.skipSilence,
       subtitle = subtitleViewState,
+      subtitleGeneration = subtitleGeneration,
     )
   }
 
@@ -173,6 +179,7 @@ class BookPlayViewModel(
       cover = book.coverUrl,
       skipSilence = false,
       subtitle = BookPlayViewState.SubtitleViewState.Disabled,
+      subtitleGeneration = BookPlayViewState.SubtitleGenerationViewState.Unavailable,
     )
   }
 
@@ -396,6 +403,34 @@ class BookPlayViewModel(
   fun onRemoveSubtitlesClick() {
     scope.launch {
       subtitleRepo.removeUri(bookId)
+    }
+  }
+
+  /**
+   * Handles the result SubRead sent back after trying to create subtitles.
+   *
+   * [srtUri] is `null` when SubRead did not return a subtitle file, either because the user
+   * cancelled or because the job failed. [error] carries SubRead's reason when it failed; it is
+   * `null` when the user simply cancelled, so nothing is shown in that case.
+   */
+  fun onSubtitlesGenerated(
+    srtUri: Uri?,
+    cues: Int,
+    matchRate: Double,
+    error: String?,
+  ) {
+    scope.launch {
+      when {
+        srtUri != null -> {
+          val localUri = subtitleFileStore.copyToAppStorage(bookId, srtUri)
+          subtitleRepo.setUri(bookId, localUri)
+          viewEffects.tryEmit(BookPlayViewEffect.SubtitleGenerationSucceeded(cues = cues, matchRate = matchRate))
+        }
+        error != null -> {
+          viewEffects.tryEmit(BookPlayViewEffect.SubtitleGenerationFailed(message = error))
+        }
+        else -> Unit // the user cancelled, nothing to report
+      }
     }
   }
 

@@ -12,6 +12,11 @@
     android:name="com.google.android.gms.permission.AD_ID"
     tools:node="remove" />
 
+  <queries>
+    <!-- SubRead makes an SRT subtitle file for a book from its audio and its ebook. -->
+    <package android:name="space.subread.app" />
+  </queries>
+
   <application
     android:enableOnBackInvokedCallback="true"
     android:name=".di.App"

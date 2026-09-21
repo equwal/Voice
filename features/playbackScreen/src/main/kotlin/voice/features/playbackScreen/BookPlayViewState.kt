@@ -1,6 +1,7 @@
 package voice.features.playbackScreen
 
 import androidx.compose.runtime.Immutable
+import voice.core.data.ChapterId
 import voice.core.playback.misc.Decibel
 import voice.features.sleepTimer.SleepTimerViewState
 import kotlin.time.Duration
@@ -17,6 +18,7 @@ data class BookPlayViewState(
   val cover: String?,
   val skipSilence: Boolean,
   val subtitle: SubtitleViewState,
+  val subtitleGeneration: SubtitleGenerationViewState,
 ) {
 
   sealed interface SleepTimerViewState {
@@ -35,6 +37,15 @@ data class BookPlayViewState(
 
     /** [text] is `null` when no cue is on at the current position. */
     data class Enabled(val text: String?) : SubtitleViewState
+  }
+
+  /** Whether the "Make subtitles with SubRead" menu item can be offered for this book. */
+  sealed interface SubtitleGenerationViewState {
+    /** SubRead handles one audio file per book, and this book has more than one. */
+    data object Unavailable : SubtitleGenerationViewState
+
+    /** This book has exactly one audio file, whose file uri is derived from [chapterId]. */
+    data class Available(val chapterId: ChapterId) : SubtitleGenerationViewState
   }
 
   init {
