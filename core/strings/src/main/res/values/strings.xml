@@ -180,7 +180,7 @@
     <!-- Menu label to create an SRT subtitle file for this book with the SubRead app. -->
     <string name="playback.option.subread">Make subtitles with SubRead…</string>
     <!-- Menu label to load or replace the SRT subtitle file for this book. -->
-    <string name="playback.option.subtitles">Subtitles…</string>
+    <string name="playback.option.subtitles">Add subtitle file (.srt)…</string>
     <!-- Menu label to remove the loaded subtitle file from this book. -->
     <string name="playback.option.subtitles_remove">Remove subtitles</string>
     <!-- Menu and dialog title for changing volume gain. -->
