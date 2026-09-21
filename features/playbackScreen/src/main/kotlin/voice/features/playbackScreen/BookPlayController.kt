@@ -66,6 +66,8 @@ fun BookPlayScreen(bookId: BookId) {
     onBookmarkClick = viewModel::onBookmarkClick,
     onBookmarkLongClick = viewModel::onBookmarkLongClick,
     onSkipSilenceClick = viewModel::toggleSkipSilence,
+    onSubtitleFileSelect = viewModel::onSubtitleFileSelected,
+    onRemoveSubtitlesClick = viewModel::onRemoveSubtitlesClick,
     onSleepTimerClick = viewModel::toggleSleepTimer,
     onVolumeBoostClick = viewModel::onVolumeGainIconClick,
     onSpeedChangeClick = viewModel::onPlaybackSpeedIconClick,

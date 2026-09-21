@@ -1,5 +1,6 @@
 package voice.features.playbackScreen
 
+import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
@@ -14,6 +15,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import voice.core.common.DispatcherProvider
 import voice.core.common.MainScope
@@ -24,6 +26,7 @@ import voice.core.data.durationMs
 import voice.core.data.markForPosition
 import voice.core.data.repo.BookRepository
 import voice.core.data.repo.BookmarkRepo
+import voice.core.data.repo.SubtitleRepo
 import voice.core.data.sleeptimer.SleepTimerPreference
 import voice.core.data.store.CurrentBookStore
 import voice.core.data.store.SleepTimerPreferenceStore
@@ -43,6 +46,7 @@ import voice.core.sleeptimer.SleepTimerMode.TimedWithDuration
 import voice.core.sleeptimer.SleepTimerState
 import voice.core.ui.formatTime
 import voice.features.playbackScreen.batteryOptimization.BatteryOptimization
+import voice.features.playbackScreen.subtitles.SubtitleLoader
 import voice.features.sleepTimer.SleepTimerViewState
 import voice.navigation.Destination
 import voice.navigation.Navigator
@@ -64,6 +68,8 @@ class BookPlayViewModel(
   private val bookmarkRepository: BookmarkRepo,
   private val volumeGainFormatter: VolumeGainFormatter,
   private val batteryOptimization: BatteryOptimization,
+  private val subtitleRepo: SubtitleRepo,
+  private val subtitleLoader: SubtitleLoader,
   dispatcherProvider: DispatcherProvider,
   @SleepTimerPreferenceStore
   private val sleepTimerPreferenceStore: DataStore<SleepTimerPreference>,
@@ -76,6 +82,9 @@ class BookPlayViewModel(
 ) {
 
   private val scope = MainScope(dispatcherProvider)
+
+  private val subtitleCueIndex = subtitleRepo.uriFlow(bookId)
+    .map { uri -> uri?.let { subtitleLoader.load(it) } }
 
   internal val viewEffects: Flow<BookPlayViewEffect>
     field = MutableSharedFlow<BookPlayViewEffect>(extraBufferCapacity = 1)
@@ -127,6 +136,15 @@ class BookPlayViewModel(
 
     val sleepTime = remember { sleepTimer.state }.collectAsState().value
     val hasMoreThanOneChapter = book.chapters.sumOf { it.chapterMarks.count() } > 1
+
+    val subtitleUri = remember(bookId) { subtitleRepo.uriFlow(bookId) }.collectAsState(initial = null).value
+    val subtitleCueIndex = subtitleCueIndex.collectAsState(initial = null).value
+    val subtitleViewState = if (subtitleUri == null) {
+      BookPlayViewState.SubtitleViewState.Disabled
+    } else {
+      BookPlayViewState.SubtitleViewState.Enabled(text = subtitleCueIndex?.cueAt(book.position)?.text)
+    }
+
     return BookPlayViewState(
       sleepTimerState = sleepTime.toViewState(),
       playing = isPlaying,
@@ -137,6 +155,7 @@ class BookPlayViewModel(
       playedTime = positionInCurrentMark.milliseconds,
       cover = book.content.coverUrl,
       skipSilence = book.content.skipSilence,
+      subtitle = subtitleViewState,
     )
   }
 
@@ -153,6 +172,7 @@ class BookPlayViewModel(
       playedTime = 10.hours + 24.minutes,
       cover = book.coverUrl,
       skipSilence = false,
+      subtitle = BookPlayViewState.SubtitleViewState.Disabled,
     )
   }
 
@@ -364,6 +384,18 @@ class BookPlayViewModel(
     scope.launch {
       val skipSilence = currentBook()?.content?.skipSilence ?: return@launch
       player.skipSilence(!skipSilence)
+    }
+  }
+
+  fun onSubtitleFileSelected(uri: Uri) {
+    scope.launch {
+      subtitleRepo.setUri(bookId, uri)
+    }
+  }
+
+  fun onRemoveSubtitlesClick() {
+    scope.launch {
+      subtitleRepo.removeUri(bookId)
     }
   }
 

@@ -1,5 +1,6 @@
 package voice.features.playbackScreen.view
 
+import android.net.Uri
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
@@ -29,6 +30,8 @@ internal fun BookPlayAppBar(
   onSpeedChangeClick: () -> Unit,
   onSkipSilenceClick: () -> Unit,
   onVolumeBoostClick: () -> Unit,
+  onSubtitleFileSelect: (Uri) -> Unit,
+  onRemoveSubtitlesClick: () -> Unit,
   onCloseClick: () -> Unit,
   useLandscapeLayout: Boolean,
 ) {
@@ -68,8 +71,11 @@ internal fun BookPlayAppBar(
     }
     OverflowMenu(
       skipSilence = viewState.skipSilence,
+      subtitlesEnabled = viewState.subtitle is BookPlayViewState.SubtitleViewState.Enabled,
       onSkipSilenceClick = onSkipSilenceClick,
       onVolumeBoostClick = onVolumeBoostClick,
+      onSubtitleFileSelect = onSubtitleFileSelect,
+      onRemoveSubtitlesClick = onRemoveSubtitlesClick,
     )
   }
   if (useLandscapeLayout) {

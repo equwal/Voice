@@ -57,6 +57,9 @@ internal fun BookPlayContent(
             onCurrentChapterClick = onCurrentChapterClick,
           )
         }
+        if (viewState.subtitle is BookPlayViewState.SubtitleViewState.Enabled) {
+          SubtitleRow(text = viewState.subtitle.text, maxHeight = 90.dp)
+        }
         Spacer(modifier = Modifier.size(20.dp))
         SliderRow(
           duration = viewState.duration,
@@ -93,6 +96,10 @@ internal fun BookPlayContent(
           onSkipToPrevious = onSkipToPrevious,
           onCurrentChapterClick = onCurrentChapterClick,
         )
+      }
+      if (viewState.subtitle is BookPlayViewState.SubtitleViewState.Enabled) {
+        Spacer(modifier = Modifier.size(8.dp))
+        SubtitleRow(text = viewState.subtitle.text)
       }
       Spacer(modifier = Modifier.size(20.dp))
       SliderRow(

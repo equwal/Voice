@@ -1,5 +1,8 @@
 package voice.features.playbackScreen.view
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
@@ -19,11 +22,21 @@ import voice.core.ui.icons.VoiceIcons
 @Composable
 internal fun OverflowMenu(
   skipSilence: Boolean,
+  subtitlesEnabled: Boolean,
   onSkipSilenceClick: () -> Unit,
   onVolumeBoostClick: () -> Unit,
+  onSubtitleFileSelect: (Uri) -> Unit,
+  onRemoveSubtitlesClick: () -> Unit,
 ) {
   Box {
     var expanded by remember { mutableStateOf(false) }
+    val subtitlePickerLauncher = rememberLauncherForActivityResult(
+      ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+      if (uri != null) {
+        onSubtitleFileSelect(uri)
+      }
+    }
     IconButton(
       onClick = {
         expanded = !expanded
@@ -65,6 +78,26 @@ internal fun OverflowMenu(
           Text(text = stringResource(id = R.string.playback_option_volume_boost))
         },
       )
+      DropdownMenuItem(
+        onClick = {
+          expanded = false
+          subtitlePickerLauncher.launch(arrayOf("*/*"))
+        },
+        text = {
+          Text(text = stringResource(id = R.string.playback_option_subtitles))
+        },
+      )
+      if (subtitlesEnabled) {
+        DropdownMenuItem(
+          onClick = {
+            expanded = false
+            onRemoveSubtitlesClick()
+          },
+          text = {
+            Text(text = stringResource(id = R.string.playback_option_subtitles_remove))
+          },
+        )
+      }
     }
   }
 }

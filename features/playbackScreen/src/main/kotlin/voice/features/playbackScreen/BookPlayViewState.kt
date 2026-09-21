@@ -16,6 +16,7 @@ data class BookPlayViewState(
   val playing: Boolean,
   val cover: String?,
   val skipSilence: Boolean,
+  val subtitle: SubtitleViewState,
 ) {
 
   sealed interface SleepTimerViewState {
@@ -27,6 +28,13 @@ data class BookPlayViewState(
       @JvmInline
       value class WithDuration(val leftDuration: Duration) : Enabled
     }
+  }
+
+  sealed interface SubtitleViewState {
+    data object Disabled : SubtitleViewState
+
+    /** [text] is `null` when no cue is on at the current position. */
+    data class Enabled(val text: String?) : SubtitleViewState
   }
 
   init {

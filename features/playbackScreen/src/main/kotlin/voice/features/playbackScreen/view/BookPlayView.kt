@@ -1,5 +1,6 @@
 package voice.features.playbackScreen.view
 
+import android.net.Uri
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -29,6 +30,8 @@ internal fun BookPlayView(
   onSpeedChangeClick: () -> Unit,
   onSkipSilenceClick: () -> Unit,
   onVolumeBoostClick: () -> Unit,
+  onSubtitleFileSelect: (Uri) -> Unit,
+  onRemoveSubtitlesClick: () -> Unit,
   onSkipToNext: () -> Unit,
   onSkipToPrevious: () -> Unit,
   onCloseClick: () -> Unit,
@@ -48,6 +51,8 @@ internal fun BookPlayView(
         onSpeedChangeClick = onSpeedChangeClick,
         onSkipSilenceClick = onSkipSilenceClick,
         onVolumeBoostClick = onVolumeBoostClick,
+        onSubtitleFileSelect = onSubtitleFileSelect,
+        onRemoveSubtitlesClick = onRemoveSubtitlesClick,
         onCloseClick = onCloseClick,
         useLandscapeLayout = useLandscapeLayout,
       )
@@ -90,6 +95,8 @@ private fun BookPlayPreview(
       onSpeedChangeClick = {},
       onSkipSilenceClick = {},
       onVolumeBoostClick = {},
+      onSubtitleFileSelect = {},
+      onRemoveSubtitlesClick = {},
       onSkipToNext = {},
       onSkipToPrevious = {},
       onCloseClick = {},
@@ -111,6 +118,7 @@ private class BookPlayViewStatePreviewProvider : PreviewParameterProvider<BookPl
       skipSilence = true,
       sleepTimerState = BookPlayViewState.SleepTimerViewState.Disabled,
       title = "Das Ende der Welt",
+      subtitle = BookPlayViewState.SubtitleViewState.Disabled,
     )
     yield(initial)
     yield(
@@ -121,5 +129,12 @@ private class BookPlayViewStatePreviewProvider : PreviewParameterProvider<BookPl
       ),
     )
     yield(initial.copy(chapterName = null))
+    yield(
+      initial.copy(
+        subtitle = BookPlayViewState.SubtitleViewState.Enabled(
+          text = "Dies ist ein Beispieluntertitel, der zeigt, wie ein langer Text umgebrochen wird.",
+        ),
+      ),
+    )
   }
 }

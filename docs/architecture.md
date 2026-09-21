@@ -45,6 +45,7 @@ Core modules provide the underlying services and abstractions:
   * `:core:scanner` – File scanning and metadata extraction
   * `:core:search` – Search logic
   * `:core:strings` – Localized string resources
+  * `:core:subtitles` – SRT subtitle parsing and cue lookup
 
 * **Cross-Cutting Concerns**
 

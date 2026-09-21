@@ -1,5 +1,6 @@
 package voice.features.playbackScreen
 
+import android.net.Uri
 import app.cash.molecule.RecompositionMode
 import app.cash.molecule.launchMolecule
 import app.cash.turbine.test
@@ -36,6 +37,9 @@ import voice.core.sleeptimer.SleepTimer
 import voice.core.sleeptimer.SleepTimerMode
 import voice.core.sleeptimer.SleepTimerMode.TimedWithDuration
 import voice.core.sleeptimer.SleepTimerState
+import voice.core.subtitles.SubtitleCue
+import voice.core.subtitles.SubtitleCueIndex
+import voice.features.playbackScreen.subtitles.SubtitleLoader
 import voice.features.sleepTimer.SleepTimerViewState
 import java.time.Instant
 import kotlin.test.Test
@@ -79,6 +83,10 @@ class BookPlayViewModelTest {
   private val currentBookResolver = mockk<CurrentBookResolver> {
     coEvery { book(book.id) } returns book
   }
+  private val subtitleRepo = FakeSubtitleRepo()
+  private val subtitleLoader = mockk<SubtitleLoader> {
+    coEvery { load(any()) } returns null
+  }
   private val viewModel = BookPlayViewModel(
     bookRepository = mockk {
       coEvery { get(book.id) } returns book
@@ -105,6 +113,8 @@ class BookPlayViewModelTest {
     },
     volumeGainFormatter = mockk(),
     batteryOptimization = mockk(),
+    subtitleRepo = subtitleRepo,
+    subtitleLoader = subtitleLoader,
     sleepTimerPreferenceStore = sleepTimerDataStore,
     bookId = book.id,
     dispatcherProvider = DispatcherProvider(scope.coroutineContext, scope.coroutineContext, scope.coroutineContext),
@@ -320,12 +330,70 @@ class BookPlayViewModelTest {
     }
   }
 
+  @Test
+  fun `subtitle is disabled when no file is set for the book`() = scope.runTest {
+    backgroundScope.launchMolecule(RecompositionMode.Immediate) {
+      viewModel.viewState()
+    }.test {
+      assertEquals(expected = null, actual = awaitItem())
+      val state = awaitItem()!!
+      assertEquals(expected = BookPlayViewState.SubtitleViewState.Disabled, actual = state.subtitle)
+    }
+  }
+
+  @Test
+  fun `subtitle cue is looked up on the whole-book position, not the chapter-relative one`() = scope.runTest {
+    // The test book has two 5 minute chapters and sits 2.5 minutes into the second chapter, so
+    // the whole-book position is 7.5 minutes (450_000ms), not 2.5 minutes (150_000ms).
+    val uri = mockk<Uri>()
+    val cueOnWholeBookClock = SubtitleCue(startMs = 440_000L, endMs = 460_000L, text = "Whole book cue")
+    val cueOnChapterRelativeClock = SubtitleCue(startMs = 140_000L, endMs = 160_000L, text = "Wrong clock cue")
+    val loader = mockk<SubtitleLoader> {
+      coEvery { load(uri) } returns SubtitleCueIndex(listOf(cueOnWholeBookClock, cueOnChapterRelativeClock))
+    }
+    val repo = FakeSubtitleRepo(mapOf(book.id to uri))
+    val viewModel = viewModel(subtitleRepo = repo, subtitleLoader = loader)
+
+    backgroundScope.launchMolecule(RecompositionMode.Immediate) {
+      viewModel.viewState()
+    }.test {
+      // The book, the subtitle uri, and the parsed cue index each arrive through their own flow,
+      // so the composable settles over a few recompositions before the cue text is available.
+      var state: BookPlayViewState? = null
+      val expected = BookPlayViewState.SubtitleViewState.Enabled("Whole book cue")
+      var attempts = 0
+      while (state?.subtitle != expected && attempts < 10) {
+        state = awaitItem()
+        attempts++
+      }
+      assertEquals(expected = expected, actual = state?.subtitle)
+      cancelAndIgnoreRemainingEvents()
+    }
+  }
+
+  @Test
+  fun `selecting and removing a subtitle file updates the repo`() = scope.runTest {
+    val uri = mockk<Uri>()
+    val repo = FakeSubtitleRepo()
+    val viewModel = viewModel(subtitleRepo = repo)
+
+    viewModel.onSubtitleFileSelected(uri)
+    yield()
+    assertEquals(expected = uri, actual = repo.uriFlow(book.id).first())
+
+    viewModel.onRemoveSubtitlesClick()
+    yield()
+    assertEquals(expected = null, actual = repo.uriFlow(book.id).first())
+  }
+
   private fun viewModel(
     book: Book = this.book,
     experimentalPlaybackPersistence: Boolean = false,
     kioskMode: Boolean = false,
     livePlaybackFlow: MutableStateFlow<LivePlaybackState?> = MutableStateFlow(null),
     playStateFlow: MutableStateFlow<PlayStateManager.PlayState> = MutableStateFlow(PlayStateManager.PlayState.Paused),
+    subtitleRepo: FakeSubtitleRepo = this.subtitleRepo,
+    subtitleLoader: SubtitleLoader = this.subtitleLoader,
   ): BookPlayViewModel {
     return BookPlayViewModel(
       bookRepository = mockk {
@@ -347,6 +415,8 @@ class BookPlayViewModelTest {
       bookmarkRepository = mockk(),
       volumeGainFormatter = mockk(),
       batteryOptimization = mockk(),
+      subtitleRepo = subtitleRepo,
+      subtitleLoader = subtitleLoader,
       sleepTimerPreferenceStore = sleepTimerDataStore,
       bookId = book.id,
       dispatcherProvider = DispatcherProvider(scope.coroutineContext, scope.coroutineContext, scope.coroutineContext),

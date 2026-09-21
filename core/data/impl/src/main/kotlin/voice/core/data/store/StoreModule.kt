@@ -3,6 +3,7 @@ package voice.core.data.store
 import android.app.Application
 import android.content.Context
 import android.content.SharedPreferences
+import android.net.Uri
 import androidx.core.content.edit
 import androidx.datastore.core.DataMigration
 import androidx.datastore.core.DataStore
@@ -13,6 +14,7 @@ import dev.zacsweers.metro.SingleIn
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.nullable
 import kotlinx.serialization.builtins.serializer
+import voice.core.common.serialization.UriSerializer
 import voice.core.data.BookId
 import voice.core.data.GridMode
 import voice.core.data.ThemeColorScheme
@@ -202,6 +204,17 @@ public interface StoreModule {
       serializer = MapSerializer(String.serializer(), FeatureFlagOverride.serializer()),
       defaultValue = emptyMap(),
       fileName = "featureFlagOverrides",
+    )
+  }
+
+  @Provides
+  @SingleIn(AppScope::class)
+  @SubtitleUriStore
+  private fun subtitleUri(factory: VoiceDataStoreFactory): DataStore<Map<BookId, Uri>> {
+    return factory.create(
+      serializer = MapSerializer(BookId.serializer(), UriSerializer),
+      defaultValue = emptyMap(),
+      fileName = "subtitleUri",
     )
   }
 }
